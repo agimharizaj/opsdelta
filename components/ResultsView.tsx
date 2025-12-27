@@ -134,7 +134,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
       yPos += 8;
 
       // Annual Value
-      doc.text(`Annual Value Created: £${results.annualValue.toLocaleString()}`, margin, yPos);
+      doc.text(`Annual Value Created: $${results.annualValue.toLocaleString()}`, margin, yPos);
       yPos += 15;
 
       // Separator
@@ -284,7 +284,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
               </div>
               <h1 className="text-4xl md:text-5xl font-black text-white leading-[1.1]">
                 Annual Value: <span className="text-orange-600 underline decoration-orange-900 underline-offset-8 decoration-8">
-                  £{results.annualValue.toLocaleString()}
+                  ${results.annualValue.toLocaleString()}
                 </span>
               </h1>
               <p className="text-slate-400 text-xl font-medium leading-relaxed max-w-xl">
