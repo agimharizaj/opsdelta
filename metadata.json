@@ -1,5 +1,5 @@
 {
-  "name": "AutomationFront",
-  "description": "A diagnostic tool for startup founders to identify automation opportunities and estimate time savings.",
+  "name": "OpsDelta",
+  "description": "Identify automation opportunities and get a personalized roadmap. Free 10-minute process audit for startup founders.",
   "requestFramePermissions": []
 }

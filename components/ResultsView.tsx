@@ -1,8 +1,8 @@
-// TODO: Before launch, sign up at https://formspree.io and replace 'YOUR_FORM_ID' with your actual form ID
+// Formspree integration live
 import React, { useState, useMemo, useEffect } from 'react';
 import { FormState, DiagnosticResult, DimensionScore } from '../types';
 import { QUESTIONS } from '../constants';
-import { Download, Mail, RefreshCw, CheckCircle2, Zap, Layers, ShieldAlert, Loader2, TrendingUp, AlertCircle, Share2, Linkedin, Twitter, FileText, ChevronRight, Calendar } from 'lucide-react';
+import { Download, Mail, RefreshCw, CheckCircle2, Zap, Layers, ShieldAlert, Loader2, TrendingUp, AlertCircle, Share2, Linkedin, Twitter, FileText, ChevronRight, Calendar, Clock } from 'lucide-react';
 import { analytics } from '../analytics';
 import { calculateResults } from '../scoring';
 
@@ -39,9 +39,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
         body: JSON.stringify({
           email: email,
           automationScore: results.totalScore,
+          priorityBand: results.priorityBand,
+          confidenceLevel: results.confidenceLevel,
           processName: responses.primaryProcess,
           weeklySavings: results.weeklySavings,
           annualValue: results.annualValue,
+          breakEvenMonths: results.breakEvenMonths,
           primaryBottleneck: results.bottleneck,
           timestamp: new Date().toISOString(),
           fullResponses: responses
@@ -73,7 +76,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
       // Header
       doc.setFontSize(28);
       doc.setTextColor(249, 115, 22); // Orange
-      doc.text('AutomationFront', margin, yPos);
+      doc.text('OpsDelta', margin, yPos);
       yPos += 8;
       
       doc.setFontSize(11);
@@ -90,6 +93,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
       doc.setFontSize(20);
       doc.setTextColor(249, 115, 22);
       doc.text(`Automation Potential: ${results.totalScore}%`, margin, yPos);
+      yPos += 8;
+      
+      // Priority Band
+      doc.setFontSize(12);
+      doc.text(`Priority: ${results.priorityBand.toUpperCase()}`, margin, yPos);
+      yPos += 6;
+      doc.text(`Confidence: ${results.confidenceLevel.toUpperCase()}`, margin, yPos);
       yPos += 12;
 
       // Process name
@@ -135,6 +145,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
 
       // Annual Value
       doc.text(`Annual Value Created: $${results.annualValue.toLocaleString()}`, margin, yPos);
+      yPos += 8;
+
+      // Break-even
+      doc.text(`Break-Even Timeline: ${results.breakEvenMonths} months`, margin, yPos);
       yPos += 15;
 
       // Separator
@@ -202,6 +216,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
         { label: 'Person Dependency', value: responses.dependency },
         { label: 'Speed Required', value: responses.speedRequirement },
         { label: 'Documentation Status', value: responses.documentation },
+        { label: 'Hourly Cost', value: responses.hourlyRate },
       ];
 
       stateData.forEach(item => {
@@ -223,7 +238,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
         doc.setFontSize(9);
         doc.setTextColor(150, 150, 150);
         doc.text(
-          `AutomationFront | automationfront.com | Page ${i} of ${totalPages}`,
+          `OpsDelta | opsdelta.io | Page ${i} of ${totalPages}`,
           pageWidth / 2,
           285,
           { align: 'center' }
@@ -238,7 +253,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
         .substring(0, 50);
 
       const date = new Date().toISOString().split('T')[0];
-      const fileName = `AutomationFront-Report-${processSlug}-${date}.pdf`;
+      const fileName = `OpsDelta-Report-${processSlug}-${date}.pdf`;
 
       doc.save(fileName);
     } catch (error) {
@@ -275,6 +290,27 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-7xl font-black text-white leading-none">{results.totalScore}%</span>
                 <span className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mt-3">Potential</span>
+              </div>
+
+              {/* Priority Band & Confidence */}
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <div className={`flex-1 px-6 py-4 rounded-2xl border-2 ${
+                  results.priorityBand === 'critical' ? 'bg-red-50 border-red-200' :
+                  results.priorityBand === 'high' ? 'bg-orange-50 border-orange-200' :
+                  results.priorityBand === 'medium' ? 'bg-yellow-50 border-yellow-200' :
+                  'bg-slate-50 border-slate-200'
+                }`}>
+                  <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-60">Priority</p>
+                  <p className="text-2xl font-black uppercase">{results.priorityBand}</p>
+                </div>
+                <div className={`flex-1 px-6 py-4 rounded-2xl border-2 ${
+                  results.confidenceLevel === 'high' ? 'bg-green-50 border-green-200' :
+                  results.confidenceLevel === 'medium' ? 'bg-yellow-50 border-yellow-200' :
+                  'bg-orange-50 border-orange-200'
+                }`}>
+                  <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-60">Confidence</p>
+                  <p className="text-2xl font-black uppercase">{results.confidenceLevel}</p>
+                </div>
               </div>
             </div>
 
@@ -331,6 +367,17 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
               <div>
                 <p className="text-xs font-black text-orange-700 uppercase tracking-[0.2em] mb-2">Weekly Leak</p>
                 <p className="text-4xl font-black text-orange-900">{results.weeklySavings} Hours</p>
+              </div>
+            </div>
+            <div className="bg-slate-50 p-10 rounded-[2.5rem] shadow-xl border border-slate-200 flex items-center gap-8 group transition-all">
+              <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-md border border-slate-100">
+                <Clock className="w-10 h-10 text-slate-600" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Break-Even</p>
+                <p className="text-4xl font-black text-slate-900">
+                  {results.breakEvenMonths} {results.breakEvenMonths === 1 ? 'Month' : 'Months'}
+                </p>
               </div>
             </div>
             <div className="bg-[#0F172A] p-10 rounded-[2.5rem] shadow-xl border border-slate-800 flex items-center gap-8 group transition-all">
@@ -415,7 +462,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
                   </button>
                   {submitError && (
                     <p className="text-xs text-orange-200 font-bold">
-                      Something went wrong. Please try again or email contact@automationfront.com
+                      Something went wrong. Please try again or email agim.harizaj@hotmail.com
                     </p>
                   )}
                   <p className="text-[10px] text-orange-200 text-center uppercase tracking-widest font-black">
@@ -428,7 +475,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ responses, onReset }) 
 
           {/* Implementation Call: Calendly */}
           <div className="bg-[#0F172A] rounded-[3rem] p-10 md:p-14 text-white border border-slate-800 relative overflow-hidden shadow-2xl">
-            {/* TODO: Create free Calendly account and replace 'YOUR-CALENDLY-LINK' with your actual scheduling link */}
+            
             <div className="relative z-10 flex flex-col h-full justify-between gap-10">
               <div className="space-y-8">
                 <div className="inline-flex p-4 bg-slate-800 rounded-2xl border border-slate-700">

@@ -1,4 +1,3 @@
-// TODO: Update LinkedIn URL with your actual profile before launch
 import React from 'react';
 
 export const About: React.FC = () => {
@@ -7,12 +6,12 @@ export const About: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 text-center">
         <div className="mb-10 flex justify-center">
           <div className="w-28 h-28 rounded-3xl border-4 border-white shadow-2xl rotate-3 bg-gradient-to-br from-orange-600 to-orange-700 flex items-center justify-center">
-            <span className="text-5xl font-black text-white">A</span>
+            <span className="text-5xl font-black text-white">O</span>
           </div>
         </div>
-        <h2 className="text-3xl font-black text-slate-900 mb-6 uppercase tracking-tight">Operator Built</h2>
+        <h2 className="text-3xl font-black text-slate-900 mb-6 uppercase tracking-tight">Built by Operators</h2>
         <p className="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8 font-medium italic">
-          "I scaled operations at <a href="https://www.thanksben.com/" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline decoration-orange-200 decoration-2 underline-offset-4 transition-all">Ben</a> from 1 to 12 people and then back to 6 over 5 years through heavy automation. I realised that 60% of team burnout stems from avoidable manual friction. I built AutomationFront to help founders identify and eliminate operational bottlenecks before they become fatal."
+          "After scaling operations at <a href="https://www.thanksben.com/" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline decoration-orange-200 decoration-2 underline-offset-4 transition-all">Ben</a>, I discovered something critical: most founder teams spend 15-20 hours per week on repetitive, automatable work. OpsDelta exists to help you find those hours. See where you're losing time. Get a personalized automation roadmap. Then execute."
         </p>
         <a 
           href="https://www.linkedin.com/in/agim-harizaj/" 

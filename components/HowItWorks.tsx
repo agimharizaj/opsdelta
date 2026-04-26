@@ -4,8 +4,8 @@ import { ClipboardCheck, BarChart3, Calendar } from 'lucide-react';
 export const HowItWorks: React.FC = () => {
   const steps = [
     {
-      title: "Analyse 10 key workflows",
-      description: "Qualitative assessment of your current manual overhead and friction points.",
+      title: "Analyze Your Workflows",
+      description: "Quick assessment of manual work and bottlenecks across your operations.",
       icon: <ClipboardCheck className="w-8 h-8 text-orange-600" />,
     },
     {
@@ -24,7 +24,7 @@ export const HowItWorks: React.FC = () => {
     <section className="py-24 bg-white border-y border-slate-100">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tight">Systemic Precision</h2>
+          <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tight">The OpsDelta Process</h2>
           <div className="w-20 h-1.5 bg-orange-600 mx-auto rounded-full"></div>
         </div>
         

@@ -13,7 +13,7 @@ export const analytics = {
       ...properties,
     };
 
-    console.group(`📊 AutomationFront Analytics: ${event}`);
+    console.group(`📊 OpsDelta Analytics: ${event}`);
     console.table(logEntry);
     console.groupEnd();
   },
