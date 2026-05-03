@@ -1,4 +1,3 @@
-
 export interface FormState {
   teamSize: string;
   toolCount: string;
@@ -10,6 +9,7 @@ export interface FormState {
   annoyance: string;
   documentation: string;
   timeSavings: string;
+  hourlyRate: string;
   email?: string;
 }
 
@@ -25,8 +25,28 @@ export interface Question {
 
 export interface DimensionScore {
   label: string;
-  score: number; // 0-10
+  score: number; // 0-10 for display
+  weight: number; // 0-1, contribution to total
   color: string;
+}
+
+export type PriorityBand = 'low' | 'medium' | 'high' | 'critical';
+export type ConfidenceLevel = 'low' | 'medium' | 'high';
+
+export interface Recommendation {
+  title: string;
+  description: string;
+  type: 'immediate' | 'strategic' | 'structural';
+}
+
+export interface Methodology {
+  implementationCostGBP: number;
+  monthlyMaintenanceGBP: number;
+  hourlyRateGBP: number;
+  weeklyHoursAssumed: number;
+  yearOneCostGBP: number;
+  scoreFormula: string;
+  roiFormula: string;
 }
 
 export interface DiagnosticResult {
@@ -34,10 +54,14 @@ export interface DiagnosticResult {
   dimensions: DimensionScore[];
   bottleneck: string;
   weeklySavings: number;
-  annualValue: number;
-  recommendations: {
-    title: string;
-    description: string;
-    type: 'immediate' | 'strategic' | 'structural';
-  }[];
+  hourlyRate: number;
+  annualValueGBP: number;
+  monthlyValueGBP: number;
+  yearOneCostGBP: number;
+  yearOneNetGBP: number;
+  breakEvenMonths: number | null; // null = never breaks even at this scale
+  priorityBand: PriorityBand;
+  confidenceLevel: ConfidenceLevel;
+  recommendations: Recommendation[];
+  methodology: Methodology;
 }

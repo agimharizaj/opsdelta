@@ -1,3 +1,102 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --paper-grain: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+    font-feature-settings: "ss01", "cv01", "cv11";
+    background-image: var(--paper-grain);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: #0E0E0E;
+    color: #FAF7F2;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #d6cfbf;
+    border-radius: 8px;
+    border: 2px solid #FAF7F2;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #b8b09e; }
+
+  h1, h2, h3, h4, h5 {
+    @apply font-display text-ink;
+    font-feature-settings: "ss01", "ss02", "ss03";
+  }
+
+  /* Distinctive Fraunces axis settings for headlines */
+  .display {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 0;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+  }
+
+  .display-tight {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 96, "SOFT" 30, "WONK" 0;
+    letter-spacing: -0.025em;
+    line-height: 1.0;
+  }
+
+  .eyebrow {
+    @apply font-mono uppercase text-[11px] tracking-[0.18em] text-ink-mute;
+  }
+
+  .rule {
+    @apply h-px w-full bg-ink/10;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-ink text-paper font-medium px-6 py-3.5 rounded-full transition-all duration-200 hover:bg-ember hover:text-paper hover:-translate-y-px active:translate-y-0;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-ink font-medium px-6 py-3.5 rounded-full border border-ink/15 transition-all duration-200 hover:border-ink hover:bg-paper-warm;
+  }
+
+  .card {
+    @apply bg-paper-card border border-paper-line rounded-2xl shadow-card;
+  }
+
+  .card-warm {
+    @apply bg-paper-warm border border-paper-line rounded-2xl;
+  }
+
+  .input-field {
+    @apply w-full px-5 py-4 bg-paper-card border border-paper-line rounded-xl outline-none transition-all duration-200 text-ink placeholder:text-ink-faint focus:border-ink focus:ring-2 focus:ring-ink/5;
+  }
+
+  .section-number {
+    @apply font-mono text-xs tracking-widest text-ink-faint uppercase;
+  }
+
+  /* Subtle reveal animations for staggered page load */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .rise { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .rise-1 { animation-delay: 0.05s; }
+  .rise-2 { animation-delay: 0.15s; }
+  .rise-3 { animation-delay: 0.25s; }
+  .rise-4 { animation-delay: 0.35s; }
+  .rise-5 { animation-delay: 0.45s; }
+}

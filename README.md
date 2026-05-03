@@ -1,94 +1,76 @@
-# OpsDelta - Business Process Automation Diagnostic
+# OpsDelta
 
-A professional diagnostic tool helping startup founders identify automation opportunities and estimate time/cost savings.
+A free three-minute diagnostic for founders and operations leads. See where your operation is leaking time, get a personalised automation roadmap, and book a call to execute.
 
-## 🚀 Quick Start
+Live: [opsdelta.vercel.app](https://opsdelta.vercel.app)
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
+## Stack
 
-### Installation
+- React 19 + TypeScript
+- Vite 6
+- Tailwind 3
+- Fraunces (display) + Inter (body) + JetBrains Mono (data), all via Google Fonts
+- jsPDF for the downloadable report
+- Formspree for lead capture
 
-1. Install dependencies:
+## Local development
+
 ```bash
 npm install
+npm run dev    # starts on http://localhost:3000 (or next free port)
 ```
 
-2. Run locally:
+## Build
+
 ```bash
-npm run dev
+npm run build       # type-checks then builds
+npm run build:fast  # skip the type-check
+npm run typecheck   # standalone type-check
 ```
 
-The app will be available at `http://localhost:3000`
+## Project layout
 
-## ⚙️ Configuration
+```
+.
+├── App.tsx                  # routes between landing and results
+├── index.tsx                # mount point + global CSS
+├── index.html               # meta, OG, fonts
+├── index.css                # tailwind base + tokens + components
+├── tailwind.config.js       # ember/moss/paper/ink palette + Fraunces/Inter/Mono
+├── types.ts                 # FormState + DiagnosticResult contracts
+├── scoring.ts               # scoring engine (dimensions, priority, confidence, ROI)
+├── constants.ts             # diagnostic questions
+├── analytics.ts             # console-based event logging
+├── components/
+│   ├── Nav.tsx              # sticky top nav
+│   ├── Hero.tsx             # editorial hero + stats strip
+│   ├── HowItWorks.tsx       # numbered three-step explainer
+│   ├── DiagnosticForm.tsx   # multi-step form with autosave
+│   ├── ResultsView.tsx      # report, lead capture, calendly, PDF export
+│   ├── About.tsx            # operator credibility section
+│   └── Footer.tsx
+└── public/
+    ├── favicon.svg
+    └── og-image.svg
+```
 
-### Integrations (Already Configured)
-- **Email Capture:** Formspree (ID: mdaoepnz)
-- **Calendly:** https://calendly.com/agim-harizaj/15min
-- **Contact Email:** agim.harizaj@hotmail.com
+## Configuration
 
-## 📦 Deployment
+| What             | Where                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| Formspree ID     | `components/ResultsView.tsx` (constant near the top of submit) |
+| Calendly URL     | `Nav.tsx`, `Hero.tsx`, `About.tsx`, `Footer.tsx`, `ResultsView.tsx` |
+| Site URL for PDF / OG | `index.html` (meta), `ResultsView.tsx` (`SITE_URL`)        |
+| Contact email    | `About.tsx`, `Footer.tsx`, `ResultsView.tsx` (error fallback)  |
 
-### Deploy to Vercel (Recommended)
+## Deployment
 
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Click "New Project"
-4. Import your GitHub repository
-5. Click "Deploy"
+Push to `main`, Vercel auto-deploys.
 
-Your site will be live at `your-project.vercel.app`
+## Localisation
 
-### Custom Domain
+British English throughout. American spellings should be treated as bugs.
 
-1. Buy domain (e.g., `opsdelta.io`)
-2. In Vercel dashboard, go to Settings → Domains
-3. Add your custom domain
-4. Update DNS records as shown in Vercel
+## License
 
-## 📊 Analytics
-
-The app includes basic console logging for tracking:
-- Diagnostic starts
-- Diagnostic completions
-- Completion rate
-- Lead capture submissions
-
-To add proper analytics, integrate Plausible or Simple Analytics.
-
-## 🛠️ Tech Stack
-
-- React 19
-- TypeScript
-- Tailwind CSS
-- Vite
-- jsPDF (for PDF generation)
-- Formspree (for email capture)
-
-## 📝 Launch Checklist
-
-- [x] Formspree integrated
-- [x] Calendly link connected
-- [x] LinkedIn URLs configured
-- [x] Contact email updated
-- [ ] Test full diagnostic flow
-- [ ] Test email capture
-- [ ] Test PDF download
-- [ ] Deploy to Vercel
-- [ ] Connect custom domain
-- [ ] Test on mobile devices
-- [ ] Monitor conversion rates
-
-## 📞 Support
-
-For issues or questions, email: agim.harizaj@hotmail.com
-
-## 🇬🇧 Localisation
-
-This application is optimised for British English spelling and terminology.
-
-## 📄 License
-
-Built for OpsDelta. 2025.
+Built for OpsDelta. All rights reserved.

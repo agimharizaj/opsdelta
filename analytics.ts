@@ -1,25 +1,21 @@
-
 /**
- * Simple, privacy-first analytics utility.
- * Logs events to console for local monitoring and simulation of tools like Plausible.
+ * Privacy-first analytics utility.
+ * Logs events to the console for local monitoring. Swap in Plausible / Simple Analytics when you're ready.
  */
+type Props = Record<string, unknown> | undefined;
+
 export const analytics = {
-  track: (event: string, properties?: Record<string, any>) => {
-    const timestamp = new Date().toISOString();
-    
-    const logEntry = {
-      event,
-      timestamp,
-      ...properties,
-    };
-
-    console.group(`📊 OpsDelta Analytics: ${event}`);
-    console.table(logEntry);
-    console.groupEnd();
+  track: (event: string, properties?: Props) => {
+    const entry = { event, timestamp: new Date().toISOString(), ...(properties ?? {}) };
+    if (typeof console !== 'undefined' && console.groupCollapsed) {
+      console.groupCollapsed(`OpsDelta · ${event}`);
+      console.table(entry);
+      console.groupEnd();
+    }
   },
-
-  // Helper to simulate "Completion Rate" summary
-  logSessionSummary: (totalStarts: number, totalFinishes: number) => {
-    console.log(`📈 Completion Rate: ${((totalFinishes / totalStarts) * 100).toFixed(1)}%`);
-  }
+  logSessionSummary: (starts: number, finishes: number) => {
+    if (starts === 0) return;
+    const rate = ((finishes / starts) * 100).toFixed(1);
+    console.info(`OpsDelta · Completion rate this session: ${rate}%`);
+  },
 };

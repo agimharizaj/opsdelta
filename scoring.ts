@@ -1,230 +1,269 @@
-import { FormState, DiagnosticResult, DimensionScore } from './types';
+import {
+  FormState,
+  DiagnosticResult,
+  DimensionScore,
+  PriorityBand,
+  ConfidenceLevel,
+  Recommendation,
+  Methodology,
+} from './types';
+import {
+  COST_MODEL,
+  DIMENSION_WEIGHTS,
+  SUBWEIGHTS,
+  ANSWER_SCORES,
+  PRIORITY_BANDS,
+  HOURLY_RATES_GBP,
+  WEEKLY_HOURS_BY_ANSWER,
+} from './scoring-config';
+
+/**
+ * SCORING MODEL (v2)
+ *
+ * Each dimension produces a normalised 0..1 score from its sub-questions.
+ * Dimensions are then weighted and summed to produce a 0..100 total.
+ *
+ *   total = (manual_burden * 0.40)
+ *         + (error_frequency * 0.25)
+ *         + (process_complexity * 0.20)
+ *         + (speed_requirement * 0.15)
+ *         × 100
+ *
+ * Manual Burden carries the most weight because it is the dimension
+ * automation directly attacks. Process Complexity is a friction
+ * multiplier, not a value driver, so it sits below errors.
+ *
+ * All constants live in scoring-config.ts.
+ */
 
 export const calculateResults = (responses: FormState): DiagnosticResult => {
-  // Calculate dimension scores (0-10 scale)
+  // Sub-scores, each 0..1
+  const manualBurden = computeManualBurden(responses);
+  const errorFrequency = lookup(ANSWER_SCORES.errorFrequency, responses.errorFrequency);
+  const processComplexity = computeProcessComplexity(responses);
+  const speedRequirement = lookup(ANSWER_SCORES.speedRequirement, responses.speedRequirement);
+
+  // Total 0..100
+  const total01 =
+    manualBurden * DIMENSION_WEIGHTS.manualBurden +
+    errorFrequency * DIMENSION_WEIGHTS.errorFrequency +
+    processComplexity * DIMENSION_WEIGHTS.processComplexity +
+    speedRequirement * DIMENSION_WEIGHTS.speedRequirement;
+  const totalScore = Math.round(total01 * 100);
+
+  // Dimensions for the breakdown view (display as 0..10)
   const dimensions: DimensionScore[] = [
-    {
-      label: 'Process Complexity',
-      score: calculateComplexityScore(responses),
-      color: '#F97316'
-    },
-    {
-      label: 'Manual Burden',
-      score: calculateManualBurdenScore(responses),
-      color: '#FB923C'
-    },
-    {
-      label: 'Error Frequency',
-      score: calculateErrorScore(responses),
-      color: '#FDBA74'
-    },
-    {
-      label: 'Speed Requirement',
-      score: calculateSpeedScore(responses),
-      color: '#FED7AA'
-    }
+    { label: 'Manual Burden', score: round1(manualBurden * 10), weight: DIMENSION_WEIGHTS.manualBurden, color: '#D9472A' },
+    { label: 'Error Frequency', score: round1(errorFrequency * 10), weight: DIMENSION_WEIGHTS.errorFrequency, color: '#B53A20' },
+    { label: 'Process Complexity', score: round1(processComplexity * 10), weight: DIMENSION_WEIGHTS.processComplexity, color: '#3F5E4A' },
+    { label: 'Speed Requirement', score: round1(speedRequirement * 10), weight: DIMENSION_WEIGHTS.speedRequirement, color: '#1C1C1C' },
   ];
 
-  // Calculate total score (0-100%)
-  const avgDimensionScore = dimensions.reduce((sum, d) => sum + d.score, 0) / dimensions.length;
-  const totalScore = Math.round(avgDimensionScore * 10);
+  // Economics
+  const weeklySavings = WEEKLY_HOURS_BY_ANSWER[responses.timeSavings] ?? 3;
+  const hourlyRate = HOURLY_RATES_GBP[responses.hourlyRate] ?? COST_MODEL.averageHourlyRateGBP;
+  const annualValueGBP = Math.round(weeklySavings * 52 * hourlyRate);
+  const monthlyValueGBP = annualValueGBP / 12;
 
-  // Calculate savings
-  const weeklySavings = extractWeeklySavings(responses.timeSavings);
-  const annualValue = Math.round(weeklySavings * 52 * 50); // $50/hour estimate
+  // Cost model: £1,000 setup + £250/month
+  const yearOneCostGBP = COST_MODEL.implementation + COST_MODEL.monthlyMaintenance * 12;
+  const yearOneNetGBP = annualValueGBP - yearOneCostGBP;
 
-  // Determine bottleneck: Use the actual pain point from Question 8, with intelligent fallback
-  const bottleneck = responses.annoyance && responses.annoyance.trim().length > 0
-    ? responses.annoyance
-    : `${responses.executionMode} process with ${responses.errorFrequency.toLowerCase()} error frequency and dependency on ${responses.dependency === 'Yes' ? 'a single person' : 'multiple people'}`;
+  // Break-even: month N where N * monthly_value > setup + N * monthly_maintenance
+  // => N > setup / (monthly_value - monthly_maintenance)
+  // If monthly_value <= monthly_maintenance, never breaks even.
+  const breakEvenMonths =
+    monthlyValueGBP > COST_MODEL.monthlyMaintenance
+      ? Math.max(1, Math.ceil(COST_MODEL.implementation / (monthlyValueGBP - COST_MODEL.monthlyMaintenance)))
+      : null;
 
-  // Generate specific recommendations
-  const recommendations = generateRecommendations(responses, dimensions, weeklySavings);
+  // Triage
+  const priorityBand = derivePriorityBand(totalScore, weeklySavings, responses);
+  const confidenceLevel = deriveConfidence(responses);
+
+  // Bottleneck narrative
+  const bottleneck = (responses.annoyance && responses.annoyance.trim().length > 5)
+    ? responses.annoyance.trim()
+    : `${responses.executionMode.toLowerCase()} execution with ${responses.errorFrequency.toLowerCase()} errors`;
+
+  const recommendations = generateRecommendations(responses, weeklySavings, hourlyRate, annualValueGBP);
+
+  const methodology: Methodology = {
+    implementationCostGBP: COST_MODEL.implementation,
+    monthlyMaintenanceGBP: COST_MODEL.monthlyMaintenance,
+    hourlyRateGBP: hourlyRate,
+    weeklyHoursAssumed: weeklySavings,
+    yearOneCostGBP,
+    scoreFormula: `Manual Burden ${pct(DIMENSION_WEIGHTS.manualBurden)} + Errors ${pct(DIMENSION_WEIGHTS.errorFrequency)} + Process Complexity ${pct(DIMENSION_WEIGHTS.processComplexity)} + Speed ${pct(DIMENSION_WEIGHTS.speedRequirement)}`,
+    roiFormula: `(${weeklySavings} hrs/week x 52 x £${hourlyRate}) - (£${COST_MODEL.implementation} setup + £${COST_MODEL.monthlyMaintenance}/month)`,
+  };
 
   return {
     totalScore,
     dimensions,
     bottleneck,
     weeklySavings,
-    annualValue,
-    recommendations
+    hourlyRate,
+    annualValueGBP,
+    monthlyValueGBP,
+    yearOneCostGBP,
+    yearOneNetGBP,
+    breakEvenMonths,
+    priorityBand,
+    confidenceLevel,
+    recommendations,
+    methodology,
   };
 };
 
-function calculateComplexityScore(r: FormState): number {
-  let score = 0;
-  
-  // More tools = higher complexity = higher automation potential
-  if (r.toolCount === '20+') score += 3;
-  else if (r.toolCount === '10-20') score += 2.5;
-  else if (r.toolCount === '5-10') score += 1.5;
-  else score += 1;
+// =========================================================================
+// Sub-scores (0..1)
+// =========================================================================
 
-  // Larger teams = more complexity
-  if (r.teamSize === '50+') score += 2.5;
-  else if (r.teamSize === '21-50') score += 2;
-  else if (r.teamSize === '6-20') score += 1.5;
-  else score += 1;
-
-  // Documentation status
-  if (r.documentation === 'No' || r.documentation === 'We tried but failed') score += 2.5;
-  else if (r.documentation === 'Somewhat') score += 1.5;
-  
-  return Math.min(score, 10);
+function computeManualBurden(r: FormState): number {
+  const exec = lookup(ANSWER_SCORES.executionMode, r.executionMode);
+  const time = lookup(ANSWER_SCORES.timeSavings, r.timeSavings);
+  const dep = lookup(ANSWER_SCORES.dependency, r.dependency);
+  const w = SUBWEIGHTS.manualBurden;
+  return exec * w.executionMode + time * w.timeSavings + dep * w.dependency;
 }
 
-function calculateManualBurdenScore(r: FormState): number {
-  let score = 0;
-  
-  if (r.executionMode === "It's a mess") score += 4;
-  else if (r.executionMode === 'Manually') score += 3.5;
-  else if (r.executionMode === 'Not sure') score += 2;
-  else score += 1;
-
-  if (r.dependency === 'Yes') score += 3;
-  else if (r.dependency === 'Multiple people can do it') score += 2;
-  
-  if (r.timeSavings === '10+ hours') score += 3;
-  else if (r.timeSavings === '5-10 hours') score += 2.5;
-  else if (r.timeSavings === '3-5 hours') score += 2;
-  
-  return Math.min(score, 10);
+function computeProcessComplexity(r: FormState): number {
+  const tools = lookup(ANSWER_SCORES.toolCount, r.toolCount);
+  const team = lookup(ANSWER_SCORES.teamSize, r.teamSize);
+  const docs = lookup(ANSWER_SCORES.documentation, r.documentation);
+  const w = SUBWEIGHTS.processComplexity;
+  return tools * w.toolCount + team * w.teamSize + docs * w.documentation;
 }
 
-function calculateErrorScore(r: FormState): number {
-  const errorMap: Record<string, number> = {
-    'Constantly': 10,
-    'Daily': 8,
-    'Weekly': 6,
-    'Sometimes': 3,
-    'Never': 1
-  };
-  return errorMap[r.errorFrequency] || 5;
+// =========================================================================
+// Triage
+// =========================================================================
+
+function derivePriorityBand(total: number, weekly: number, r: FormState): PriorityBand {
+  const fragile = r.errorFrequency === 'Constantly' || r.errorFrequency === 'Daily' || r.dependency === 'Yes, one person';
+  if (total >= PRIORITY_BANDS.critical && fragile) return 'critical';
+  if (total >= PRIORITY_BANDS.high || weekly >= 10) return 'high';
+  if (total >= PRIORITY_BANDS.medium) return 'medium';
+  return 'low';
 }
 
-function calculateSpeedScore(r: FormState): number {
-  const speedMap: Record<string, number> = {
-    'Instant': 10,
-    'Fast (minutes)': 7,
-    'Medium (hours)': 4,
-    'Slow (days)': 2
-  };
-  return speedMap[r.speedRequirement] || 5;
+function deriveConfidence(r: FormState): ConfidenceLevel {
+  const knowsTime = r.timeSavings !== 'Honestly no idea';
+  const knowsRate = r.hourlyRate !== 'Not sure';
+  const documented = r.documentation === 'Thoroughly' || r.documentation === 'Roughly';
+  const namedProcess = !!r.primaryProcess && r.primaryProcess.trim().length > 4;
+  const score = [knowsTime, knowsRate, documented, namedProcess].filter(Boolean).length;
+  if (score >= 4) return 'high';
+  if (score >= 2) return 'medium';
+  return 'low';
 }
 
-function extractWeeklySavings(timeSavings: string): number {
-  if (timeSavings === '10+ hours') return 12;
-  if (timeSavings === '5-10 hours') return 7.5;
-  if (timeSavings === '3-5 hours') return 4;
-  if (timeSavings === '1-2 hours') return 1.5;
-  return 3; // 'No idea' default
-}
+// =========================================================================
+// Recommendations (rule-based, deterministic)
+// =========================================================================
 
-function generateRecommendations(
-  r: FormState, 
-  dimensions: DimensionScore[], 
-  weeklySavings: number
-): Array<{title: string; description: string; type: 'immediate' | 'strategic' | 'structural'}> {
-  
-  const recs = [];
-  const processName = r.primaryProcess;
-  
-  // Recommendation 1: Address the specific annoyance first
+function generateRecommendations(r: FormState, weekly: number, rate: number, annualGBP: number): Recommendation[] {
+  const recs: Recommendation[] = [];
+  const proc = r.primaryProcess.trim() || 'this workflow';
+
   if (r.annoyance && r.annoyance.trim().length > 10) {
     recs.push({
-      title: 'Fix the Biggest Pain Point First',
-      description: `You mentioned: "${r.annoyance}". This is where to start. Automate or eliminate this specific friction point in "${processName}" before building a comprehensive solution. Quick wins build momentum.`,
-      type: 'immediate' as const
+      title: 'Fix the biggest annoyance first',
+      description: `You said: "${r.annoyance.trim()}". Start there. Removing the single most painful friction point in ${proc} compounds: it builds momentum, frees attention, and proves the model before you commit to a larger build.`,
+      type: 'immediate',
     });
   }
 
-  // Recommendation 2: Documentation if missing
-  if (r.documentation === 'No' || r.documentation === 'We tried but failed') {
+  if (r.documentation === 'Not really' || r.documentation === 'We tried and gave up') {
     recs.push({
-      title: 'Document Before You Automate',
-      description: `Map out "${processName}" step-by-step: what happens, who does it, where data lives, what breaks. Without documentation, you're automating blind. This takes 2-3 hours and reveals exactly what to build.`,
-      type: 'immediate' as const
+      title: 'Document before you automate',
+      description: `Map ${proc} step by step: what happens, who does it, where data lives, what breaks. Two to three hours of writing usually surfaces more than half the eventual automation spec. Without this, you build blind.`,
+      type: 'immediate',
     });
-  } else if (r.documentation === 'Somewhat') {
+  } else if (r.documentation === 'Roughly') {
     recs.push({
-      title: 'Complete Your Process Documentation',
-      description: `You have partial documentation for "${processName}". Fill in the gaps: edge cases, error handling, data sources. Complete docs = clear automation roadmap.`,
-      type: 'immediate' as const
-    });
-  }
-
-  // Recommendation 3: Tool consolidation for high tool count
-  if (r.toolCount === '10-20' || r.toolCount === '20+') {
-    recs.push({
-      title: `Connect Your ${r.toolCount} Tools`,
-      description: `"${processName}" likely involves copying data between multiple tools. Use Zapier, Make, or n8n to connect these systems automatically. Start with the 2-3 tools you touch most often.`,
-      type: 'strategic' as const
+      title: 'Close the documentation gaps',
+      description: `Partial docs for ${proc} are good. Now fill the edges: failure modes, exceptions, who picks it up when the primary owner is out. Complete docs become a clean automation brief.`,
+      type: 'immediate',
     });
   }
 
-  // Recommendation 4: Error reduction for high error frequency
+  if (r.toolCount === '5-10' || r.toolCount === '10+') {
+    recs.push({
+      title: `Connect the ${r.toolCount} tools you already use`,
+      description: `${proc} almost certainly involves moving data between systems by hand. Use n8n, Make, or Zapier to wire the two or three highest-traffic seams first. You will recover hours before you have built anything custom.`,
+      type: 'strategic',
+    });
+  }
+
   if (r.errorFrequency === 'Daily' || r.errorFrequency === 'Constantly') {
     recs.push({
-      title: 'Eliminate Error-Prone Manual Steps',
-      description: `With ${r.errorFrequency.toLowerCase()} errors in "${processName}", automation isn't optional—it's a reliability fix. Humans make transcription errors, forget steps, and get distracted. Systems don't.`,
-      type: 'immediate' as const
+      title: 'Eliminate the error-prone manual steps',
+      description: `${r.errorFrequency} errors in ${proc} are not a discipline problem: they are a system problem. Humans miss steps, mistype values, and get distracted. Systems do not. Treat automation here as a reliability investment, not an efficiency one.`,
+      type: 'immediate',
     });
   } else if (r.errorFrequency === 'Weekly') {
     recs.push({
-      title: 'Reduce Error Rate Through Automation',
-      description: `Weekly errors in "${processName}" suggest manual steps that should be systematized. Identify which steps fail most often and automate those first.`,
-      type: 'strategic' as const
+      title: 'Systemise the steps that fail most',
+      description: `Weekly errors in ${proc} cluster around a small number of manual steps. Instrument the process for a week, identify the top three failure modes, and automate those first.`,
+      type: 'strategic',
     });
   }
 
-  // Recommendation 5: Single-person dependency
-  if (r.dependency === 'Yes') {
+  if (r.dependency === 'Yes, one person') {
     recs.push({
-      title: 'Remove Single-Person Dependency',
-      description: `"${processName}" depends on one person. This is an operational risk (bus factor = 1). Build a system—automated or documented—so anyone can execute this process. Start by recording a Loom walkthrough, then automate the repetitive parts.`,
-      type: 'structural' as const
+      title: 'Remove the single-person dependency',
+      description: `${proc} sitting with one person is an operational risk. Bus factor of one means a sick day or resignation breaks the process. Start with a Loom walkthrough, turn that into documented SOP, then automate the repetitive 30%.`,
+      type: 'structural',
     });
   }
 
-  // Recommendation 6: ROI-based for significant time savings
-  if (weeklySavings >= 5) {
+  if (weekly >= 5) {
     recs.push({
-      title: `Recover ${weeklySavings} Hours/Week = $${(weeklySavings * 52 * 50).toLocaleString()}/Year`,
-      description: `You're spending ${weeklySavings} hours every week on "${processName}". That's ${Math.round(weeklySavings * 52)} hours annually. Automate the most repetitive 30% of this workflow to unlock 60-70% of the time savings immediately.`,
-      type: 'strategic' as const
+      title: `Recover ${weekly} hours per week, worth £${annualGBP.toLocaleString()} a year`,
+      description: `${weekly} hours a week on ${proc} is ${Math.round(weekly * 52)} hours a year. Automating just the most repetitive 30% of the workflow typically unlocks 60-70% of the time saving immediately, with a payback inside a quarter.`,
+      type: 'strategic',
     });
-  } else if (weeklySavings >= 2) {
+  } else if (weekly >= 2) {
     recs.push({
-      title: `Small Process, Big Impact Over Time`,
-      description: `${weeklySavings} hours/week on "${processName}" might not seem like much, but over a year that's ${Math.round(weeklySavings * 52)} hours. Automate it once, benefit forever.`,
-      type: 'strategic' as const
-    });
-  }
-
-  // Recommendation 7: Speed requirement (instant/fast processes)
-  if (r.speedRequirement === 'Instant' || r.speedRequirement === 'Fast (minutes)') {
-    recs.push({
-      title: 'Build Real-Time Automation',
-      description: `"${processName}" needs to run ${r.speedRequirement.toLowerCase()}. Manual execution can't reliably hit this speed. Use APIs, webhooks, or real-time integrations to eliminate the human bottleneck entirely.`,
-      type: 'structural' as const
+      title: 'Small process, compounding return',
+      description: `${weekly} hours a week on ${proc} sounds modest, but that is ${Math.round(weekly * 52)} hours a year. Build it once, benefit forever, and free that attention for higher-value work.`,
+      type: 'strategic',
     });
   }
 
-  // If we don't have at least 3 recommendations yet, add a general one
+  if (r.speedRequirement === 'Instant' || r.speedRequirement === 'Fast (within minutes)') {
+    recs.push({
+      title: 'Move to event-driven automation',
+      description: `${proc} needs to run ${r.speedRequirement.toLowerCase()}. Manual execution cannot reliably hit that bar. Webhooks and APIs eliminate the human bottleneck and remove latency at the same time.`,
+      type: 'structural',
+    });
+  }
+
   if (recs.length < 3) {
     recs.push({
-      title: 'Start Small: Automate 20% of the Workflow',
-      description: `Don't try to automate all of "${processName}" at once. Pick the most repetitive 20%—usually data entry or status updates—and build that first. Prove the ROI, then expand.`,
-      type: 'immediate' as const
+      title: 'Start with the most repetitive 20%',
+      description: `Do not try to automate all of ${proc} at once. Pick the most repetitive 20%, usually data entry or status updates, and ship that first. Prove the ROI, then expand.`,
+      type: 'immediate',
     });
-  } else if (recs.length < 3) {
-      recs.push({
-        title: 'Build a Pilot Automation',
-        description: `Start with a low-risk 10-20% automation of "${processName}" to validate cost recovery and build organisational confidence in automation. Focus on the most annoying step first: "${r.annoyance}".`,
-        type: 'immediate' as const
-      });
   }
 
-  // Return top 4-5 most relevant recommendations
   return recs.slice(0, 5);
+}
+
+// =========================================================================
+// Helpers
+// =========================================================================
+
+function lookup<T extends Record<string, number>>(table: T, key: string): number {
+  return (table as Record<string, number>)[key] ?? 0;
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function pct(n: number): string {
+  return `${Math.round(n * 100)}%`;
 }

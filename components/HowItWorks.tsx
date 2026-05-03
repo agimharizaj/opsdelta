@@ -1,43 +1,48 @@
 import React from 'react';
-import { ClipboardCheck, BarChart3, Calendar } from 'lucide-react';
+
+const steps = [
+  {
+    n: '01',
+    title: 'Map your workflow',
+    description:
+      'Eleven targeted questions about your team, tools, and the single process eating most of your week.',
+  },
+  {
+    n: '02',
+    title: 'See the numbers',
+    description:
+      'A precision score, your weekly hour leak, projected annual value, and the specific bottleneck holding you back.',
+  },
+  {
+    n: '03',
+    title: 'Get the roadmap',
+    description:
+      'Up to five personalised recommendations, plus an optional 15-minute call to walk through implementation.',
+  },
+];
 
 export const HowItWorks: React.FC = () => {
-  const steps = [
-    {
-      title: "Analyze Your Workflows",
-      description: "Quick assessment of manual work and bottlenecks across your operations.",
-      icon: <ClipboardCheck className="w-8 h-8 text-orange-600" />,
-    },
-    {
-      title: "Receive Precision Score",
-      description: "Our engine calculates automation alpha and projected labour recovery.",
-      icon: <BarChart3 className="w-8 h-8 text-orange-600" />,
-    },
-    {
-      title: "Optional Strategy Call",
-      description: "Discuss architecture and implementation roadmap for your bottleneck.",
-      icon: <Calendar className="w-8 h-8 text-orange-600" />,
-    },
-  ];
-
   return (
-    <section className="py-24 bg-white border-y border-slate-100">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-black text-slate-900 mb-4 uppercase tracking-tight">The OpsDelta Process</h2>
-          <div className="w-20 h-1.5 bg-orange-600 mx-auto rounded-full"></div>
+    <section id="how" className="py-24 md:py-32 border-t border-ink/10">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex items-baseline gap-6 mb-16">
+          <span className="section-number">/ 01</span>
+          <h2 className="display-tight text-4xl md:text-5xl">
+            How the audit works.
+          </h2>
         </div>
-        
-        <div className="grid md:grid-cols-3 gap-12">
-          {steps.map((step, idx) => (
-            <div key={idx} className="flex flex-col items-center text-center group">
-              <div className="w-20 h-20 rounded-2xl bg-orange-50 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-md border border-orange-100">
-                {step.icon}
-              </div>
-              <h3 className="text-xl font-black text-slate-900 mb-3 uppercase tracking-tight">{step.title}</h3>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                {step.description}
-              </p>
+
+        <div className="grid md:grid-cols-3 gap-px bg-ink/10 border border-ink/10 rounded-2xl overflow-hidden">
+          {steps.map((step) => (
+            <div
+              key={step.n}
+              className="bg-paper p-10 md:p-12 hover:bg-paper-warm transition-colors"
+            >
+              <div className="font-mono text-sm text-ember mb-8">{step.n}</div>
+              <h3 className="font-display text-2xl md:text-3xl font-semibold tracking-tight mb-4 text-ink">
+                {step.title}
+              </h3>
+              <p className="text-ink-mute leading-relaxed">{step.description}</p>
             </div>
           ))}
         </div>

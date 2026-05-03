@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { QUESTIONS } from '../constants';
 import { FormState } from '../types';
-import { ArrowLeft, ArrowRight, Check, Info, HelpCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Info } from 'lucide-react';
 
 interface DiagnosticFormProps {
   initialState: FormState;
@@ -10,11 +10,11 @@ interface DiagnosticFormProps {
   onStepChange: (step: number) => void;
 }
 
-export const DiagnosticForm: React.FC<DiagnosticFormProps> = ({ 
-  initialState, 
-  initialStep, 
+export const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
+  initialState,
+  initialStep,
   onComplete,
-  onStepChange
+  onStepChange,
 }) => {
   const [currentStep, setCurrentStep] = useState(initialStep || 1);
   const [formData, setFormData] = useState<FormState>(initialState);
@@ -28,170 +28,174 @@ export const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
   const currentQuestion = QUESTIONS[currentStep - 1];
   const progress = (currentStep / QUESTIONS.length) * 100;
 
-  const handleOptionSelect = (id: keyof FormState, value: string) => {
-    setFormData(prev => ({ ...prev, [id]: value }));
+  const setValue = (id: keyof FormState, value: string) => {
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleNext = () => {
     if (currentStep < QUESTIONS.length) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((s) => s + 1);
     } else {
       onComplete(formData);
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-    }
+    if (currentStep > 1) setCurrentStep((s) => s - 1);
   };
 
-  const isCurrentStepValid = () => {
-    const value = formData[currentQuestion.id];
-    return typeof value === 'string' && value.trim().length > 0;
+  const isValid = () => {
+    const v = formData[currentQuestion.id];
+    return typeof v === 'string' && v.trim().length > 0;
   };
 
-  const applyExample = () => {
-    if (currentQuestion.example) {
-      handleOptionSelect(currentQuestion.id, currentQuestion.example);
-    }
+  const useExample = () => {
+    if (currentQuestion.example) setValue(currentQuestion.id, currentQuestion.example);
   };
 
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-[0_20px_50px_rgba(15,23,42,0.1)] overflow-hidden min-h-[600px] flex flex-col transition-all duration-500">
-      {/* Progress Header */}
-      <div className="px-10 py-8 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-xs font-black text-orange-600 uppercase tracking-[0.2em]">
-            Module {currentStep} / {QUESTIONS.length}
-          </span>
-          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-            {Math.round(progress)}% Optimised
-          </span>
+    <div className="card overflow-hidden">
+      {/* Progress header */}
+      <div className="px-8 md:px-10 pt-8 pb-6 border-b border-paper-line">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-baseline gap-3">
+            <span className="section-number">/ 02</span>
+            <span className="text-sm text-ink-mute">
+              Question <span className="font-medium text-ink">{currentStep}</span>{' '}
+              <span className="text-ink-faint">of {QUESTIONS.length}</span>
+            </span>
+          </div>
+          <span className="font-mono text-xs text-ink-faint">{Math.round(progress)}%</span>
         </div>
-        <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden border border-slate-100">
-          <div 
-            className="h-full bg-orange-600 transition-all duration-1000 ease-out rounded-full shadow-[0_0_10px_rgba(249,115,22,0.4)]"
+        <div className="h-[3px] w-full bg-paper-line rounded-full overflow-hidden">
+          <div
+            className="h-full bg-ink transition-all duration-700 ease-out rounded-full"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      {/* Form Content */}
-      <div className="flex-1 px-10 py-12 relative">
+      {/* Question body */}
+      <div className="px-8 md:px-10 py-12 min-h-[420px]">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-start justify-between mb-10">
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight flex-1">
+          <div className="flex items-start justify-between gap-6 mb-10">
+            <h2 className="display-tight text-2xl md:text-3xl text-ink flex-1 leading-tight">
               {currentQuestion.text}
             </h2>
-            <div className="relative ml-6">
-              <button 
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                className="text-slate-300 hover:text-orange-500 transition-colors p-1"
-                aria-label="Context"
-              >
-                <Info className="w-7 h-7" />
-              </button>
-              {showTooltip && currentQuestion.tooltip && (
-                <div className="absolute right-0 top-12 w-72 bg-slate-900 text-white text-xs p-5 rounded-2xl shadow-2xl z-50 animate-in fade-in zoom-in-95 border border-slate-800">
-                  <p className="font-black mb-2 text-orange-400 uppercase tracking-widest">Operator Context:</p>
-                  <p className="leading-relaxed opacity-90 font-medium">{currentQuestion.tooltip}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {currentQuestion.type === 'radio' && currentQuestion.options?.map((option, idx) => (
-              <label 
-                key={idx}
-                className={`flex items-center p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 group ${
-                  formData[currentQuestion.id] === option 
-                    ? 'border-orange-600 bg-orange-50 ring-2 ring-orange-600/10' 
-                    : 'border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-100/50'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name={currentQuestion.id}
-                  className="hidden"
-                  checked={formData[currentQuestion.id] === option}
-                  onChange={() => handleOptionSelect(currentQuestion.id, option)}
-                />
-                <div className={`w-7 h-7 rounded-full border-2 mr-5 flex items-center justify-center transition-all ${
-                  formData[currentQuestion.id] === option ? 'border-orange-600 bg-orange-600 scale-110 shadow-lg shadow-orange-600/20' : 'border-slate-300 bg-white'
-                }`}>
-                  {formData[currentQuestion.id] === option && <Check className="w-4 h-4 text-white stroke-[4px]" />}
-                </div>
-                <span className={`text-lg font-black transition-colors ${
-                  formData[currentQuestion.id] === option ? 'text-orange-900' : 'text-slate-600'
-                }`}>
-                  {option}
-                </span>
-              </label>
-            ))}
-
-            {(currentQuestion.type === 'text' || currentQuestion.type === 'textarea') && (
-              <div className="space-y-4">
-                <div className="relative">
-                  {currentQuestion.type === 'text' ? (
-                    <input
-                      type="text"
-                      placeholder={currentQuestion.placeholder}
-                      className="w-full p-6 text-lg border-2 border-slate-100 rounded-2xl focus:border-orange-600 focus:ring-4 focus:ring-orange-600/10 outline-none transition-all bg-slate-50/30 font-bold text-slate-900 placeholder:text-slate-400"
-                      value={formData[currentQuestion.id] || ''}
-                      onChange={(e) => handleOptionSelect(currentQuestion.id, e.target.value)}
-                    />
-                  ) : (
-                    <textarea
-                      placeholder={currentQuestion.placeholder}
-                      rows={5}
-                      className="w-full p-6 text-lg border-2 border-slate-100 rounded-2xl focus:border-orange-600 focus:ring-4 focus:ring-orange-600/10 outline-none transition-all resize-none bg-slate-50/30 font-bold text-slate-900 placeholder:text-slate-400"
-                      value={formData[currentQuestion.id] || ''}
-                      onChange={(e) => handleOptionSelect(currentQuestion.id, e.target.value)}
-                    />
-                  )}
-                </div>
-                {currentQuestion.example && (
-                  <button 
-                    onClick={applyExample}
-                    className="flex items-center text-xs font-black text-orange-600 hover:text-orange-700 transition-colors py-2 uppercase tracking-widest"
-                  >
-                    <HelpCircle className="w-4 h-4 mr-2" />
-                    Load Template
-                  </button>
+            {currentQuestion.tooltip && (
+              <div className="relative shrink-0">
+                <button
+                  onMouseEnter={() => setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                  onClick={() => setShowTooltip((s) => !s)}
+                  className="text-ink-faint hover:text-ember transition-colors p-1"
+                  aria-label="Why we ask"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+                {showTooltip && (
+                  <div className="absolute right-0 top-10 w-72 bg-ink text-paper text-sm p-4 rounded-xl shadow-soft z-50">
+                    <div className="eyebrow text-ember mb-2">Why we ask</div>
+                    <p className="leading-relaxed">{currentQuestion.tooltip}</p>
+                  </div>
                 )}
               </div>
             )}
           </div>
+
+          {/* Radio options */}
+          {currentQuestion.type === 'radio' && (
+            <div className="space-y-3">
+              {currentQuestion.options?.map((option) => {
+                const selected = formData[currentQuestion.id] === option;
+                return (
+                  <label
+                    key={option}
+                    className={`flex items-center gap-4 p-5 rounded-xl border cursor-pointer transition-all ${
+                      selected
+                        ? 'border-ink bg-ink text-paper'
+                        : 'border-paper-line bg-paper-card hover:border-ink/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name={currentQuestion.id}
+                      className="hidden"
+                      checked={selected}
+                      onChange={() => setValue(currentQuestion.id, option)}
+                    />
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        selected ? 'border-paper bg-paper' : 'border-ink/20 bg-paper-card'
+                      }`}
+                    >
+                      {selected && <Check className="w-3 h-3 text-ink stroke-[3px]" />}
+                    </div>
+                    <span className={`text-base font-medium ${selected ? 'text-paper' : 'text-ink'}`}>
+                      {option}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Text and textarea */}
+          {(currentQuestion.type === 'text' || currentQuestion.type === 'textarea') && (
+            <div className="space-y-3">
+              {currentQuestion.type === 'text' ? (
+                <input
+                  type="text"
+                  placeholder={currentQuestion.placeholder}
+                  className="input-field text-lg"
+                  value={formData[currentQuestion.id] || ''}
+                  onChange={(e) => setValue(currentQuestion.id, e.target.value)}
+                />
+              ) : (
+                <textarea
+                  placeholder={currentQuestion.placeholder}
+                  rows={5}
+                  className="input-field text-lg resize-none"
+                  value={formData[currentQuestion.id] || ''}
+                  onChange={(e) => setValue(currentQuestion.id, e.target.value)}
+                />
+              )}
+              {currentQuestion.example && (
+                <button
+                  onClick={useExample}
+                  className="text-xs text-ember hover:text-ember-deep transition-colors flex items-center gap-1.5"
+                >
+                  <span className="font-mono">↳</span>
+                  Use the example: "{currentQuestion.example}"
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer Navigation */}
-      <div className="px-10 py-8 border-t border-slate-100 flex items-center justify-between bg-slate-100/20">
+      {/* Footer */}
+      <div className="px-8 md:px-10 py-6 border-t border-paper-line bg-paper-warm/40 flex items-center justify-between">
         <button
           onClick={handleBack}
           disabled={currentStep === 1}
-          className={`flex items-center px-5 py-3 rounded-xl font-black transition-all uppercase text-xs tracking-widest ${
-            currentStep === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200'
+          className={`flex items-center gap-1.5 text-sm transition-colors ${
+            currentStep === 1
+              ? 'text-ink-faint cursor-not-allowed'
+              : 'text-ink-mute hover:text-ink'
           }`}
         >
-          <ArrowLeft className="mr-2 w-4 h-4" />
-          Previous
+          <ArrowLeft className="w-4 h-4" />
+          Back
         </button>
 
         <button
           onClick={handleNext}
-          disabled={!isCurrentStepValid()}
-          className={`flex items-center px-12 py-5 rounded-xl font-black shadow-xl transition-all uppercase text-sm tracking-widest ${
-            !isCurrentStepValid() 
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-              : 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-orange-600/30 active:scale-95'
-          }`}
+          disabled={!isValid()}
+          className={`btn-primary ${!isValid() && 'opacity-30 cursor-not-allowed hover:bg-ink hover:translate-y-0'}`}
         >
-          {currentStep === QUESTIONS.length ? 'Audit Report' : 'Next Step'}
-          <ArrowRight className="ml-2 w-5 h-5" />
+          {currentStep === QUESTIONS.length ? 'Generate report' : 'Next'}
+          <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
